@@ -61,7 +61,8 @@ function assign_pmpro_level_on_activation($user_id, $user_data, $entry) {
             $order = new MemberOrder();
             $order->user_id = $user_id;
             $order->membership_id = $pmpro_level;
-            $order->initial_payment = $total_amount;
+            $order->initial_payment = $total_amount; //The Fee in Members List.
+            $order->InitialPayment = $total_amount; //The total in Orders page.
             $order->PaymentAmount = $total_amount;
             $order->payment_type = 'Stripe - Card ' . $last_four_digits;
             $order->cardtype = 'Visa'; // Set the appropriate card type.
