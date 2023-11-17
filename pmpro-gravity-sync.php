@@ -3,7 +3,7 @@
 /*
  * Plugin Name: PmPro and Gravity Form Sync
  * Description: WordPress plugin for Big Tomato Tech to sync between Gravity Form and Paid Membership pro.
- * Version: 1.2
+ * Version: 1.3
  * Requires at least: 6.0
  * Author: Rajin Sharwar
  * Author URI: https://profiles.wordpress.org/rajinsharwar
@@ -61,7 +61,7 @@ function assign_pmpro_level_on_activation($user_id, $user_data, $entry) {
             $order = new MemberOrder();
             $order->user_id = $user_id;
             $order->membership_id = $pmpro_level;
-            $order->InitialPayment = $total_amount;
+            $order->initial_payment = $total_amount;
             $order->PaymentAmount = $total_amount;
             $order->payment_type = 'Stripe - Card ' . $last_four_digits;
             $order->cardtype = 'Visa'; // Set the appropriate card type.
@@ -72,7 +72,28 @@ function assign_pmpro_level_on_activation($user_id, $user_data, $entry) {
             $order->timestamp = $order_date;
 
             if ($order->saveOrder()) {
-                // Order created successfully.
+                // Order created successfully. 
+
+                /** 
+                 * Now update the Fee. the Fee is the SUM of initial_payment and billing_amount. 
+                 * So, making the value update in one would do. 
+                 * REF: paid-memberships-pro/adminpages/dashboard.php
+                 * 
+                 */
+                global $wpdb;
+
+                $fee = get_total_amount_from_stripe($entry['id'], $form_id);
+
+                // Update the initial_payment column for the specified user ID.
+                $query = $wpdb->prepare(
+                    "UPDATE {$wpdb->pmpro_memberships_users}
+                    SET initial_payment = %f
+                    WHERE user_id = %d",
+                    $fee,
+                    $user_id
+                );
+
+                $wpdb->query($query);
             }
         }
     }
