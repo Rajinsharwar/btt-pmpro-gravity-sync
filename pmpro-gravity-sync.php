@@ -1,8 +1,9 @@
 <?php
+
 /*
  * Plugin Name: PmPro and Gravity Form Sync
  * Description: WordPress plugin for Big Tomato Tech to sync between Gravity Form and Paid Membership pro.
- * Version: 2.0
+ * Version: 2.1
  * Requires at least: 6.0
  * Author: Rajin Sharwar
  * Author URI: https://profiles.wordpress.org/rajinsharwar
@@ -65,25 +66,57 @@ class PmproGravitySync {
             // Remove the option index and pipe character.
             $selected_product_value = strtok($selected_product_value, '|');
 
+            // Extract address fields from Gravity Forms entry.
+            $billing_name = rgar($entry, '13');
+            $street_address = rgar($entry, '2.1');
+            $address_line_2 = rgar($entry, '2.2');
+            $city = rgar($entry, '2.3');
+            $state = rgar($entry, '2.4');
+            $zip_code = rgar($entry, '2.5');
+            $phone = rgar($entry, '29');
             // Map the selected product option to the PMPro level ID.
             $pmpro_level = 0; // Default level ID if no match is found.
 
             if ($selected_product_value == 'Basic:  $62/month') {
                 $pmpro_level = 2;
+                $billing_cycle = 1;
+                $billing_period = 'Month';
+                $billing_amount = 62.00000000;
             } elseif ($selected_product_value == 'Basic Plus Domain: $65.50/month') {
                 $pmpro_level = 3;
+                $billing_cycle = 1;
+                $billing_period = 'Month';
+                $billing_amount = 65.50000000;
             } elseif ($selected_product_value == 'NewsTrack:  $124/month') {
                 $pmpro_level = 4;
+                $billing_cycle = 1;
+                $billing_period = 'Month';
+                $billing_amount = 124.00000000;
             } elseif ($selected_product_value == 'State-Large:  $188/month') {
                 $pmpro_level = 5;
+                $billing_cycle = 1;
+                $billing_period = 'Month';
+                $billing_amount = 188.00000000;
             } elseif ($selected_product_value == 'Basic-Annual: $669.60/year') {
                 $pmpro_level = 6;
+                $billing_cycle = 1;
+                $billing_period = 'Year';
+                $billing_amount = 669.00000000;
             } elseif ($selected_product_value == 'Basic Plus-Annual: $707.40/year') {
                 $pmpro_level = 7;
+                $billing_cycle = 1;
+                $billing_period = 'Year';
+                $billing_amount = 707.40000000;
             } elseif ($selected_product_value == 'NewsTrack-Annual: $1,339.20/year') {
                 $pmpro_level = 8;
+                $billing_cycle = 1;
+                $billing_period = 'Year';
+                $billing_amount = 1339.20000000;
             } elseif ($selected_product_value == 'State-Large-Annual: $2,030.40/year') {
                 $pmpro_level = 9;
+                $billing_cycle = 1;
+                $billing_period = 'Year';
+                $billing_amount = 2030.40000000;
             }
 
             // Assign the PMPro level to the user.
@@ -129,16 +162,40 @@ class PmproGravitySync {
 
                     $fee = $this -> total_amount($entry['id'], $form_id);
 
-                    // Update the initial_payment column for the specified user ID.
                     $query = $wpdb->prepare(
                         "UPDATE {$wpdb->pmpro_memberships_users}
-                        SET initial_payment = %f
+                        SET 
+                            initial_payment = %f,
+                            billing_amount = %f,
+                            cycle_number = %d,
+                            cycle_period = %s
                         WHERE user_id = %d",
                         $fee,
+                        $billing_amount,
+                        $billing_cycle,
+                        $billing_period,
                         $user_id
                     );
 
                     $wpdb->query($query);
+
+                    //Updating the billing details for the order from the form.
+                    $wpdb->update(
+                        $wpdb->pmpro_membership_orders,
+                        array(
+                            'billing_name' => $billing_name,
+                            'billing_street' => $street_address . ' ' . $address_line_2,
+                            'billing_city' => $city,
+                            'billing_state' => $state,
+                            'billing_zip' => $zip_code,
+                            'billing_country' => 'United States',
+                            'billing_phone' => $phone,
+                            'accountnumber' => $last_four_digits,
+                        ),
+                        array('user_id' => $user_id),
+                        array('%s', '%s', '%s', '%s', '%s', '%s', '%s'),
+                        array('%d')
+                    );
                 }
             }
         }
